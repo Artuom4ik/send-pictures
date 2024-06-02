@@ -1,6 +1,7 @@
 import os
 import asyncio
 import datetime
+import logging
 
 from aiohttp import web
 import aiofiles
@@ -36,6 +37,7 @@ async def test_archive(request):
             chunk = await process.stdout.read(chunk_size)
             if chunk:
                 f.write(chunk)
+                logging.info(f"Sending archive chunk {len(chunk)} bytes")
                 await response.write(chunk)
 
     await response.write_eof()
@@ -49,6 +51,7 @@ async def handle_index_page(request):
 
 
 if __name__ == '__main__':
+    logging.basicConfig(filename='sending.log', level=logging.INFO)
     app = web.Application()
     app.add_routes([
         web.get('/', handle_index_page),
