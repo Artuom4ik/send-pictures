@@ -10,14 +10,19 @@ async def test_archive(request):
     archive_hash = request.match_info['archive_hash']
     archive_name = f"{archive_hash}.zip"
     archive_path = os.path.join('archives', archive_name)
+    photos_directory = os.path.join("test_photos", archive_hash)
     args = f"zip -r - *"
 
-    process = await asyncio.create_subprocess_shell(
-        args,
-        cwd=os.path.join("test_photos", archive_hash),
-        stdout=asyncio.subprocess.PIPE,
-        stderr=asyncio.subprocess.PIPE
-    )
+    try:
+        process = await asyncio.create_subprocess_shell(
+            args,
+            cwd=photos_directory,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE
+        )
+
+    except FileNotFoundError:
+        return web.HTTPNotFound(text="Архив не существует или был удален")
 
     response = web.StreamResponse()
     response.headers['Content-Type'] = 'application/zip'
