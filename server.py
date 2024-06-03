@@ -22,25 +22,35 @@ async def test_archive(request):
             stderr=asyncio.subprocess.PIPE
         )
 
+        response = web.StreamResponse()
+        response.headers['Content-Type'] = 'application/zip'
+        response.headers['Content-Disposition'] = f'attachment; filename="{archive_name}"'
+        await response.prepare(request)
+
+        chunk_size = 500 * 1024
+
+        with open(archive_path, 'wb') as f:
+            while not process.stdout.at_eof():
+                chunk = await process.stdout.read(chunk_size)
+                if chunk:
+                    f.write(chunk)
+                    logging.info(f"Sending archive chunk {len(chunk)} bytes")
+                    await response.write(chunk)
+
+                    await asyncio.sleep(1)
+
+        await response.write_eof()
+
     except FileNotFoundError:
         return web.HTTPNotFound(text="Архив не существует или был удален")
 
-    response = web.StreamResponse()
-    response.headers['Content-Type'] = 'application/zip'
-    response.headers['Content-Disposition'] = f'attachment; filename="{archive_name}"'
-    await response.prepare(request)
+    except asyncio.CancelledError:
+        print("Download was interrupted")
+        raise
 
-    chunk_size = 500 * 1024
+    finally:
+        process.close()
 
-    with open(archive_path, 'wb') as f:
-        while not process.stdout.at_eof():
-            chunk = await process.stdout.read(chunk_size)
-            if chunk:
-                f.write(chunk)
-                logging.info(f"Sending archive chunk {len(chunk)} bytes")
-                await response.write(chunk)
-
-    await response.write_eof()
     return response
 
 
