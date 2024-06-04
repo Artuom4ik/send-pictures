@@ -1,4 +1,5 @@
 import os
+import argparse
 import asyncio
 import datetime
 import logging
@@ -7,17 +8,47 @@ from aiohttp import web
 import aiofiles
 
 
+def get_settings():
+    parser = argparse.ArgumentParser(
+        description='This is an archive server',
+    )
+
+    parser.add_argument(
+        "-f",
+        "--folder",
+        type=str,
+        default="test_photos",
+        help="Folder with photos"
+    )
+    parser.add_argument("-l", "--log", type=bool, default=False, help="Log")
+    parser.add_argument(
+        "-d",
+        "--delay",
+        type=bool,
+        default=False,
+        help="Delay"
+    )
+
+    return parser.parse_args()
+
+
 async def test_archive(request):
+    settings = get_settings()
+
+    photo_folder = settings.folder
+    delay = settings.delay
+    log = settings.log
+
     archive_hash = request.match_info['archive_hash']
     archive_name = f"{archive_hash}.zip"
     archive_path = os.path.join('archives', archive_name)
-    photos_directory = os.path.join("test_photos", archive_hash)
+    photos_path = os.path.join(photo_folder, archive_hash)
     args = f"zip -r - *"
 
     try:
         process = await asyncio.create_subprocess_shell(
             args,
-            cwd=photos_directory,
+            cwd=photos_path,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE
         )
@@ -34,10 +65,11 @@ async def test_archive(request):
                 chunk = await process.stdout.read(chunk_size)
                 if chunk:
                     f.write(chunk)
-                    logging.info(f"Sending archive chunk {len(chunk)} bytes")
+                    logging.info(
+                        f"Sending archive chunk {len(chunk)} bytes") if log else None
                     await response.write(chunk)
 
-                    await asyncio.sleep(1)
+                    await asyncio.sleep(1) if delay else None
 
         await response.write_eof()
 
@@ -49,7 +81,7 @@ async def test_archive(request):
         raise
 
     finally:
-        process.close()
+        process.terminate()
 
     return response
 
@@ -61,7 +93,11 @@ async def handle_index_page(request):
 
 
 if __name__ == '__main__':
-    logging.basicConfig(filename='sending.log', level=logging.INFO)
+    settings = get_settings()
+
+    if settings.log:
+        logging.basicConfig(filename='sending.log', level=logging.INFO)
+
     app = web.Application()
     app.add_routes([
         web.get('/', handle_index_page),
