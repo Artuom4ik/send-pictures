@@ -35,24 +35,23 @@ def get_settings():
 async def test_archive(request):
     settings = get_settings()
 
-    photo_folder = settings.folder
+    photos_folder = settings.folder
     delay = settings.delay
     log = settings.log
 
     archive_hash = request.match_info['archive_hash']
     archive_name = f"{archive_hash}.zip"
     archive_path = os.path.join('archives', archive_name)
-    photos_path = os.path.join(photo_folder, archive_hash)
-    args = f"zip -r - *"
+    photos_path = os.path.join(photos_folder, archive_hash)
+
+    process = await asyncio.create_subprocess_exec(
+        "zip",  "-r",  "-",  ".",
+        cwd=photos_path,
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.PIPE
+    )
 
     try:
-        process = await asyncio.create_subprocess_shell(
-            args,
-            cwd=photos_path,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE
-        )
-
         response = web.StreamResponse()
         response.headers['Content-Type'] = 'application/zip'
         response.headers['Content-Disposition'] = f'attachment; filename="{archive_name}"'
@@ -60,11 +59,11 @@ async def test_archive(request):
 
         chunk_size = 500 * 1024
 
-        with open(archive_path, 'wb') as f:
+        with open(archive_path, 'wb') as archive:
             while not process.stdout.at_eof():
                 chunk = await process.stdout.read(chunk_size)
                 if chunk:
-                    f.write(chunk)
+                    archive.write(chunk)
                     logging.info(
                         f"Sending archive chunk {len(chunk)} bytes") if log else None
                     await response.write(chunk)
@@ -77,11 +76,11 @@ async def test_archive(request):
         return web.HTTPNotFound(text="Архив не существует или был удален")
 
     except asyncio.CancelledError:
-        print("Download was interrupted")
+        logging.error("Download was interrupted")
         raise
 
     finally:
-        process.terminate()
+        process.kill()
 
     return response
 
@@ -96,7 +95,13 @@ if __name__ == '__main__':
     settings = get_settings()
 
     if settings.log:
-        logging.basicConfig(filename='sending.log', level=logging.INFO)
+        logging.basicConfig(
+            level=logging.INFO,
+            format='%(asctime)s [%(levelname)s] %(message)s',
+            handlers=[
+                logging.StreamHandler()
+            ]
+        )
 
     app = web.Application()
     app.add_routes([
