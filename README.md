@@ -70,29 +70,31 @@ python3 server.py
 ___
 >### Допольнительные параметры запуска сервера
 
-- При запуске сервера можно указать 2 параметра
+- При запуске сервера можно указать 3 параметра
 
 `Linux`
 
 ```bash
-python3 server.py -d True -l True
+python3 server.py -f test_photos -d True -l True
 ```
 
 ```bash
-python3 server.py --delay True --log True
+python3 server.py --folder test_photos --delay True --log True
 ```
 ___
 
 `Windows`
 
 ```bash
-python server.py -d True -l True
+python server.py -f test_photos -d True -l True
 ```
 
 ```bash
-python server.py --delay True --log True
+python server.py --folder test_photos --delay True --log True
 ```
 ___
+
+- `-f`, `--folder` - параметры для указания пути к каталогам с фотографиями. По умолчанию стоит `test_photos`.
 
 - `-d`, `--delay` - параметры для включения задержки, если `--delay True` или `-d True`, то будет включена задержка при отправке архива. По умолчанию стоит `False`.
 
