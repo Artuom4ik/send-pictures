@@ -32,7 +32,7 @@ def get_settings():
     return parser.parse_args()
 
 
-async def test_archive(request):
+async def download_archive(request):
     settings = get_settings()
 
     photos_folder = settings.folder
@@ -106,6 +106,6 @@ if __name__ == '__main__':
     app = web.Application()
     app.add_routes([
         web.get('/', handle_index_page),
-        web.get('/archive/{archive_hash}/', test_archive),
+        web.get('/archive/{archive_hash}/', download_archive),
     ])
     web.run_app(app)
