@@ -77,7 +77,7 @@ async def download_archive(request):
 
     except asyncio.CancelledError:
         logging.error("Download was interrupted")
-        raise
+        raise asyncio.CancelledError
 
     finally:
         process.kill()
