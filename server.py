@@ -1,8 +1,8 @@
 import os
 import argparse
 import asyncio
-import datetime
 import logging
+import signal
 
 from aiohttp import web
 import aiofiles
@@ -81,6 +81,7 @@ async def download_archive(request):
 
     finally:
         process.kill()
+        await process.communicate()
 
     return response
 
@@ -108,4 +109,9 @@ if __name__ == '__main__':
         web.get('/', handle_index_page),
         web.get('/archive/{archive_hash}/', download_archive),
     ])
+
+    loop = asyncio.get_event_loop()
+    loop.add_signal_handler(signal.SIGTERM, loop.stop)
+    loop.add_signal_handler(signal.SIGINT, loop.stop)
+
     web.run_app(app)
